@@ -116,7 +116,7 @@ export function JoinButton({
         variant="primary"
         className="w-full"
         onClick={handleJoin}
-        disabled={status = "in_progress"}
+        disabled={loading || status != "in_progress"}
       >
         {loading ? "Joining..." : "Join Competition"}
       </Button>
