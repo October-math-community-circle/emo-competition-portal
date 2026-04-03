@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Loader2,
   Ban,
+  LogOut, // <-- Added LogOut icon import
 } from "lucide-react";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -140,6 +141,20 @@ export default function ClientPage({
     updateLivekitToken,
     updateCompetitionId,
   } = useStreams();
+
+  // ── Manual Exit Handler ───────────────────────────────────────────────────
+  const handleExitExam = () => {
+    const confirmExit = window.confirm(
+      "Are you sure you want to exit the exam? You may not be able to return depending on the competition settings."
+    );
+    if (confirmExit) {
+      router.push("/student");
+      setCameraStream(null);
+      setScreenStream(null);
+      updateLivekitToken("");
+      updateCompetitionId("");
+    }
+  };
 
   return (
     <>
@@ -313,6 +328,19 @@ export default function ClientPage({
                 )}
               </div>
             )}
+          </div>
+
+          {/* ── Exit Exam Button Footer ────────────────────────────────────────── */}
+          <div className="p-5 border-t border-zinc-800">
+            <Button
+              type="button"
+              onClick={handleExitExam}
+              disabled={isBlocked}
+              className="w-full bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 transition-colors"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Exit Exam
+            </Button>
           </div>
         </div>
       </div>
