@@ -13,6 +13,7 @@ import {
   Megaphone,
   X,
   Send,
+  MessageSquare,
 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useParticipants, useTracks } from "@livekit/components-react";
@@ -31,19 +32,23 @@ export default function AdminGrid({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // Set of blocked participant identities (these are the student UIDs)
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
 
-  // Announcement modal state
+  // Announcement modal
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const [announcementText, setAnnouncementText] = useState("");
 
-  // Private message modal state
+  // Private message modal
+  // identity = Firebase UID (LiveKit identity), name = display name
   const [pmTarget, setPmTarget] = useState<{
     identity: string;
     name: string;
   } | null>(null);
   const [pmText, setPmText] = useState("");
+
+  // "Pick a student" modal — shown when proctor clicks the message icon
+  // in the header rather than on a specific tile
+  const [showStudentPicker, setShowStudentPicker] = useState(false);
 
   const [isPending, startTransition] = useTransition();
 
@@ -86,6 +91,11 @@ export default function AdminGrid({
     });
   };
 
+  const openPrivateMessage = (identity: string, name: string) => {
+    setPmTarget({ identity, name });
+    setPmText("");
+  };
+
   const handleSendAnnouncement = () => {
     if (!announcementText.trim()) return;
     startTransition(async () => {
@@ -98,6 +108,7 @@ export default function AdminGrid({
   const handleSendPrivateMessage = () => {
     if (!pmText.trim() || !pmTarget) return;
     startTransition(async () => {
+      // pmTarget.identity is the student's Firebase UID — set as LiveKit identity in joinCompetition.ts
       await sendPrivateMessage(competitionId, pmTarget.identity, pmText.trim());
       setPmText("");
       setPmTarget(null);
@@ -141,14 +152,23 @@ export default function AdminGrid({
             )}
           </h2>
 
-          <div className="flex items-center gap-3">
-            {/* Announcement button */}
+          <div className="flex items-center gap-2">
+            {/* Private message — pick a student */}
+            <button
+              onClick={() => setShowStudentPicker(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-600 text-white text-sm font-semibold transition-colors"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Message Student
+            </button>
+
+            {/* Announcement to all */}
             <button
               onClick={() => setShowAnnouncement(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold transition-colors"
             >
               <Megaphone className="w-4 h-4" />
-              Announce
+              Announce to All
             </button>
 
             {/* Pagination */}
@@ -193,14 +213,51 @@ export default function AdminGrid({
               )}
               isBlocked={blockedIds.has(participant.identity)}
               onBlock={handleBlock}
-              onPrivateMessage={(identity, name) => {
-                setPmTarget({ identity, name });
-                setPmText("");
-              }}
+              onPrivateMessage={openPrivateMessage}
             />
           ))}
         </div>
       </div>
+
+      {/* ── Student Picker Modal (for "Message Student" button) ─────────────── */}
+      {showStudentPicker && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-sm shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-gray-800">
+              <div className="flex items-center gap-2 text-blue-400 font-bold text-lg">
+                <MessageSquare className="w-5 h-5" />
+                Select Student
+              </div>
+              <button
+                onClick={() => setShowStudentPicker(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-3 max-h-80 overflow-y-auto space-y-1">
+              {studentParticipants.map((p) => (
+                <button
+                  key={p.identity}
+                  onClick={() => {
+                    openPrivateMessage(
+                      p.identity,
+                      p.name || p.identity,
+                    );
+                    setShowStudentPicker(false);
+                  }}
+                  className="w-full text-left px-4 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium transition-colors flex items-center gap-3"
+                >
+                  <div className="w-8 h-8 rounded-full bg-blue-600/30 flex items-center justify-center text-blue-300 font-bold text-xs shrink-0">
+                    {(p.name || p.identity).charAt(0).toUpperCase()}
+                  </div>
+                  <span className="truncate">{p.name || p.identity}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Announcement Modal ───────────────────────────────────────────────── */}
       {showAnnouncement && (
