@@ -11,13 +11,14 @@ import {
 } from "firebase/firestore";
 import { db } from "@/app/firebase";
 import { Bell, MessageSquare, X } from "lucide-react";
+import { Message } from "@october-math-community-circle/shared-utitilies";
 
-interface Message {
+/* interface Message {
   id: string;
   type: "announcement" | "private";
   message: string;
   sentAt: Timestamp | null;
-}
+} */
 
 export default function MessagesPanel({
   competitionId,
@@ -87,7 +88,10 @@ export default function MessagesPanel({
       annInitialDone = true;
       const docs = isInitial
         ? snap.docs
-        : snap.docChanges().filter((c) => c.type === "added").map((c) => c.doc);
+        : snap
+            .docChanges()
+            .filter((c) => c.type === "added")
+            .map((c) => c.doc);
       if (docs.length) merge(docs, isInitial);
     });
 
@@ -96,7 +100,10 @@ export default function MessagesPanel({
       pmInitialDone = true;
       const docs = isInitial
         ? snap.docs
-        : snap.docChanges().filter((c) => c.type === "added").map((c) => c.doc);
+        : snap
+            .docChanges()
+            .filter((c) => c.type === "added")
+            .map((c) => c.doc);
       if (docs.length) merge(docs, isInitial);
     });
 
