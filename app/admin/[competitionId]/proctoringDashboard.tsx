@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "@livekit/components-styles";
 import AdminGrid from "./adminGrid";
 import IncidentsSidebar from "@/app/admin/[competitionId]/IncidentsSidebar";
@@ -18,7 +18,6 @@ export default function AdminPage({
 }) {
   const [hasJoined, setHasJoined] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [participants, setParticipants] = useState<RemoteParticipant[]>([]);
   const room = useMemo(
     () => new Room({ adaptiveStream: true, dynacast: true }),
     [],
@@ -46,6 +45,7 @@ export default function AdminPage({
       room.removeAllListeners().disconnect();
     };
   }, [competitionId]);
+
   if (error) {
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center text-white p-4">
@@ -90,7 +90,8 @@ export default function AdminPage({
         </header>
 
         <div className="flex-1 flex overflow-hidden relative">
-          <AdminGrid />
+          {/* Pass competitionId so AdminGrid can call server actions */}
+          <AdminGrid competitionId={competitionId} />
           <IncidentsSidebar roomName={competitionId as string} />
         </div>
       </div>
