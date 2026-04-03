@@ -1,4 +1,3 @@
-//"use server";
 import { Metadata } from "next";
 import { db } from "../firebase-admin";
 import getUser from "@/lib/server/getUser";
@@ -6,6 +5,7 @@ import { Registration } from "@october-math-community-circle/shared-utitilies/re
 import { Timestamp } from "firebase-admin/firestore";
 import { Competition } from "@october-math-community-circle/shared-utitilies/competition";
 import StudentPage from "./studentPage";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Student Dashboard",
@@ -14,11 +14,16 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 export default async function page() {
   const user = await getUser();
+
+  // 🔒 Only students are allowed here — redirect admins to their own dashboard
+  if (!user) redirect("/");
+  if (user.role === "admin") redirect("/admin");
+
   const pendingRegistrations = (
     await db
       .collection("registrations")
       .where("expired", "==", false)
-      .where("uid", "==", user?.uid)
+      .where("uid", "==", user.uid)
       .get()
   ).docs.map((doc) => {
     const data = doc.data() as Registration;
@@ -28,11 +33,13 @@ export default async function page() {
       createdAt: (data.createdAt as Timestamp).toDate().toString(),
     };
   });
+
   const competitions = await Promise.all(
     pendingRegistrations.map((registration) =>
       db.collection("competitions").doc(registration.competitionId).get(),
     ),
   );
+
   const competitionsData = competitions
     .toSorted((a, b) => {
       const dataA = a.data() as Competition;
@@ -44,7 +51,8 @@ export default async function page() {
     })
     .filter((doc) => {
       const compData = doc.data() as Competition;
-      return ["in_progress", "closed"].includes(compData.status);
+      // Only show competitions that are currently running
+      return compData.status === "in_progress";
     })
     .map((doc) => {
       const data = doc.data() as Competition;
@@ -56,6 +64,7 @@ export default async function page() {
         endDate: (data.endDate as Timestamp).toDate().toString(),
       };
     });
+
   return (
     <StudentPage
       registrations={pendingRegistrations}
