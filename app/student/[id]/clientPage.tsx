@@ -145,7 +145,7 @@ export default function ClientPage({
   // ── Manual Exit Handler ───────────────────────────────────────────────────
   const handleExitExam = () => {
     const confirmExit = window.confirm(
-      "Are you sure you want to exit the exam? You may not be able to return depending on the competition settings."
+      "Are you sure you want to exit the exam? You won't have another chance to enter the exam."
     );
     if (confirmExit) {
       router.push("/student");
