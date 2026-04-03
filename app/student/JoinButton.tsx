@@ -5,7 +5,7 @@ import { useState } from "react";
 import { joinCompetition } from "@/app/server-actions/joinCompetition";
 import { Competition } from "@october-math-community-circle/shared-utitilies/competition";
 import { Modal } from "@/components/ui/Modal";
-import { MonitorX, ShieldAlert } from "lucide-react";
+import { MonitorX, ShieldAlert, Lock, Clock } from "lucide-react";
 import { useStreams } from "./useStreams";
 import { useUser } from "../hooks/useUser";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,17 @@ interface JoinButtonProps {
   status: Competition["status"];
 }
 
+// These errors mean the student can never join — disable the button permanently
+const PERMANENT_ERRORS = [
+  "Re-entry is not allowed",
+  "already entered",
+  "join window has closed",
+];
+
+function isPermanentError(msg: string) {
+  return PERMANENT_ERRORS.some((e) => msg.toLowerCase().includes(e.toLowerCase()));
+}
+
 export function JoinButton({
   competitionId,
   isJoined,
@@ -23,6 +34,7 @@ export function JoinButton({
 }: JoinButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [permanentlyBlocked, setPermanentlyBlocked] = useState(false);
   const [showStreamsError, setShowStreamsError] = useState(false);
   const {
     updateCompetitionId,
@@ -30,40 +42,34 @@ export function JoinButton({
     setScreenStream,
     setCameraStream,
   } = useStreams();
+
   const resetTracks = () => {
     setScreenStream((prev) => {
-      if (prev) {
-        prev.getTracks().forEach((track) => track.stop());
-      }
+      if (prev) prev.getTracks().forEach((track) => track.stop());
       return null;
     });
     setCameraStream((prev) => {
-      if (prev) {
-        prev.getTracks().forEach((track) => track.stop());
-      }
+      if (prev) prev.getTracks().forEach((track) => track.stop());
       return null;
     });
   };
+
   const shareStreams = async () => {
     resetTracks();
     try {
       const ScreenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          displaySurface: "monitor", // Prefer window
-        },
+        video: { displaySurface: "monitor" },
         audio: false,
       });
       setScreenStream(ScreenStream);
       const [screenTrack] = ScreenStream.getVideoTracks();
-      console.log(screenTrack.getSettings().displaySurface);
 
-      if (screenTrack.getSettings().displaySurface != "monitor") {
-        const tracks = ScreenStream.getTracks();
-        tracks.forEach((track) => track.stop());
+      if (screenTrack.getSettings().displaySurface !== "monitor") {
+        ScreenStream.getTracks().forEach((track) => track.stop());
         setShowStreamsError(true);
         return;
       }
-      console.log({ ScreenStream });
+
       const CameraStream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: false,
@@ -75,6 +81,7 @@ export function JoinButton({
       throw error;
     }
   };
+
   const handleJoin = async () => {
     setLoading(true);
     setError(null);
@@ -82,12 +89,13 @@ export function JoinButton({
       await shareStreams();
       const result = await joinCompetition(competitionId);
       if (!result.success) {
-        setError(result.error || "Failed to join");
-        throw new Error(result.error || "Failed to join");
+        const msg = result.error || "Failed to join";
+        setError(msg);
+        if (isPermanentError(msg)) setPermanentlyBlocked(true);
+        resetTracks();
+        return;
       }
       updateCompetitionId(competitionId);
-      console.log("liveKit token", result.data);
-
       updateLivekitToken(result.data);
     } catch (err: unknown) {
       console.log({ handleJoinError: err });
@@ -110,13 +118,28 @@ export function JoinButton({
     );
   }
 
+  // Permanently blocked — show a locked state instead of a button
+  if (permanentlyBlocked && error) {
+    const isWindowClosed = error.toLowerCase().includes("window");
+    return (
+      <div className="w-full rounded-lg border border-red-200 bg-red-50 p-3 flex items-start gap-3">
+        {isWindowClosed ? (
+          <Clock className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+        ) : (
+          <Lock className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+        )}
+        <p className="text-sm text-red-700 font-medium">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full space-y-2">
       <Button
         variant="primary"
         className="w-full"
         onClick={handleJoin}
-        disabled={loading || status != "in_progress"}
+        disabled={loading || status !== "in_progress"}
       >
         {loading ? "Joining..." : "Join Competition"}
       </Button>
