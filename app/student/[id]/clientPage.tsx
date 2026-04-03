@@ -15,6 +15,7 @@ import {
   ListChecks,
   ChevronDown,
   Loader2,
+  Ban,
 } from "lucide-react";
 import * as yup from "yup";
 import { yupResolver } from "@hookform/resolvers/yup";
@@ -32,9 +33,10 @@ import {
 import { db } from "@/app/firebase";
 import { useUser } from "@/app/hooks/useUser";
 import EndedModal from "./endedModal";
-import router from "next/router";
 import { useRouter } from "next/navigation";
 import { useStreams } from "../useStreams";
+import MessagesPanel from "./MessagesPanel";
+import { useIsBlocked } from "@/app/hooks/useIsBlocked";
 
 interface ClientPageProps {
   pdfUrl: string;
@@ -53,6 +55,11 @@ export default function ClientPage({
 }: ClientPageProps) {
   const [activeTab, setActiveTab] = useState<Tab>("submit");
   const [submissions, setSubmissions] = useState<string[]>(initialSubmissions);
+  const user = useUser();
+
+  // ── Block detection ─────────────────────────────────────────────────────────
+  const isBlocked = useIsBlocked(competitionId, user?.uid);
+
   const yupSchema = useMemo(() => {
     return yup.object({
       selectedProblem: yup
@@ -69,6 +76,7 @@ export default function ClientPage({
         .required("Please enter an answer"),
     });
   }, [problems, submissions]);
+
   const {
     handleSubmit,
     formState: { errors, touchedFields, isLoading, isValid },
@@ -81,8 +89,9 @@ export default function ClientPage({
       selectedProblem: "",
     },
   });
-  const user = useUser();
+
   const submitAnswer = async (data: yup.InferType<typeof yupSchema>) => {
+    if (isBlocked) return; // prevent submission while blocked
     try {
       await addDoc(collection(db, `submissions`), {
         problemId: data.selectedProblem,
@@ -98,7 +107,9 @@ export default function ClientPage({
       reset();
     }
   };
+
   const [isCompetitionEnded, setIsCompetitionEnded] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     const unsub = onSnapshot(
@@ -121,6 +132,7 @@ export default function ClientPage({
       compUnSub();
     };
   }, [user]);
+
   const router = useRouter();
   const {
     setCameraStream,
@@ -128,6 +140,7 @@ export default function ClientPage({
     updateLivekitToken,
     updateCompetitionId,
   } = useStreams();
+
   return (
     <>
       <div className="flex h-screen w-full overflow-hidden bg-zinc-950">
@@ -196,8 +209,8 @@ export default function ClientPage({
                   <div className="relative">
                     <select
                       {...register("selectedProblem")}
-                      disabled={isLoading}
-                      className="w-full h-11 appearance-none rounded-lg border border-zinc-700 bg-zinc-800 px-3 pr-10 text-sm text-zinc-200 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary cursor-pointer"
+                      disabled={isLoading || isBlocked}
+                      className="w-full h-11 appearance-none rounded-lg border border-zinc-700 bg-zinc-800 px-3 pr-10 text-sm text-zinc-200 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {problems.map(([problemId, title], index) => (
                         <option
@@ -229,8 +242,8 @@ export default function ClientPage({
                     type="number"
                     step="any"
                     placeholder="Enter your numerical answer"
-                    disabled={isLoading}
-                    className="bg-zinc-800 border-zinc-700 text-zinc-200 placeholder:text-zinc-500 focus-visible:ring-primary/50"
+                    disabled={isLoading || isBlocked}
+                    className="bg-zinc-800 border-zinc-700 text-zinc-200 placeholder:text-zinc-500 focus-visible:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
                     required
                     error={
                       touchedFields.answer ? errors.answer?.message : undefined
@@ -243,7 +256,7 @@ export default function ClientPage({
                   type="submit"
                   variant="primary"
                   className="w-full"
-                  disabled={isLoading || !isValid}
+                  disabled={isLoading || !isValid || isBlocked}
                 >
                   {isLoading ? (
                     <>
@@ -277,7 +290,6 @@ export default function ClientPage({
                       key={problemId}
                       className="relative rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3.5 transition-colors"
                     >
-                      {/* Accent bar */}
                       <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-lg bg-emerald-500" />
                       <div className="pl-2">
                         <div className="flex items-start justify-between mb-1.5">
@@ -304,6 +316,26 @@ export default function ClientPage({
           </div>
         </div>
       </div>
+
+      {/* ── Blocked overlay ────────────────────────────────────────────────────── */}
+      {isBlocked && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center text-white">
+          <div className="bg-red-500/10 border border-red-500/40 rounded-2xl p-8 max-w-md text-center">
+            <Ban className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold mb-2">Exam Access Blocked</h2>
+            <p className="text-zinc-300 leading-relaxed">
+              The proctor has temporarily blocked your access to this exam.
+              Please wait or contact the proctor for assistance.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Messages floating panel ────────────────────────────────────────────── */}
+      {user?.uid && (
+        <MessagesPanel competitionId={competitionId} uid={user.uid} />
+      )}
+
       <EndedModal
         isOpen={isCompetitionEnded}
         onClose={() => {
