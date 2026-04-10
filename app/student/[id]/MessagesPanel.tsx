@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   collection,
   onSnapshot,
@@ -26,6 +26,15 @@ export default function MessagesPanel({
   competitionId: string;
   uid: string;
 }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  useLayoutEffect(() => {
+    audioRef.current = new Audio();
+    return () => {
+      audioRef.current?.pause();
+      (audioRef.current as HTMLAudioElement).src = "/newMessage.mp3";
+      (audioRef.current as HTMLAudioElement).load();
+    };
+  }, []);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -36,7 +45,8 @@ export default function MessagesPanel({
 
   useEffect(() => {
     if (!uid || !competitionId) return;
-
+    (audioRef.current as HTMLAudioElement).src = "/newMessage.mp3";
+    (audioRef.current as HTMLAudioElement).load();
     const merge = (
       docs: { id: string; data: () => object }[],
       isInitialLoad: boolean,
@@ -82,21 +92,34 @@ export default function MessagesPanel({
     let annInitialDone = false;
     let pmInitialDone = false;
 
-    const unsubAnn = onSnapshot(annQuery, (snap) => {
+    const unsubAnn = onSnapshot(annQuery, async (snap) => {
       const isInitial = !annInitialDone;
       annInitialDone = true;
+      if (snap.docChanges().length > 0) {
+        await (audioRef.current as HTMLAudioElement).play();
+      }
+
       const docs = isInitial
         ? snap.docs
-        : snap.docChanges().filter((c) => c.type === "added").map((c) => c.doc);
+        : snap
+            .docChanges()
+            .filter((c) => c.type === "added")
+            .map((c) => c.doc);
       if (docs.length) merge(docs, isInitial);
     });
 
-    const unsubPm = onSnapshot(pmQuery, (snap) => {
+    const unsubPm = onSnapshot(pmQuery, async (snap) => {
       const isInitial = !pmInitialDone;
       pmInitialDone = true;
+      if (snap.docChanges().length > 0) {
+        await (audioRef.current as HTMLAudioElement).play();
+      }
       const docs = isInitial
         ? snap.docs
-        : snap.docChanges().filter((c) => c.type === "added").map((c) => c.doc);
+        : snap
+            .docChanges()
+            .filter((c) => c.type === "added")
+            .map((c) => c.doc);
       if (docs.length) merge(docs, isInitial);
     });
 
