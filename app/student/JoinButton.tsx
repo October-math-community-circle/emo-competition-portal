@@ -61,7 +61,7 @@ export function JoinButton({
         const tracks = ScreenStream.getTracks();
         tracks.forEach((track) => track.stop());
         setShowStreamsError(true);
-        return;
+        throw new Error("Screen sharing and camera is monitored for proctoring purposes.");
       }
       console.log({ ScreenStream });
       const CameraStream = await navigator.mediaDevices.getUserMedia({
@@ -116,7 +116,7 @@ export function JoinButton({
         variant="primary"
         className="w-full"
         onClick={handleJoin}
-        disabled={loading || status != "open"}
+        disabled={loading || status != "in_progress"}
       >
         {loading ? "Joining..." : "Join Competition"}
       </Button>
