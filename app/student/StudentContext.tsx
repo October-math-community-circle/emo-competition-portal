@@ -60,7 +60,7 @@ function StudentContext({ children }: { children: React.ReactNode }) {
       `sessions/${competitionId}/${user?.uid}`,
     );
     let unsub: Unsubscribe | null = null;
-    let hearbeat: NodeJS.Timeout | null = null;
+    let heartbeat: NodeJS.Timeout | null = null;
     const disconnectListener = async () => {
       await room.disconnect();
     };
@@ -103,7 +103,7 @@ function StudentContext({ children }: { children: React.ReactNode }) {
           lastUpdate: serverTimestamp(),
         });
       });
-      hearbeat = setInterval(() => {
+      heartbeat = setInterval(() => {
         set(sessionRef, {
           status: "online",
           lastUpdated: serverTimestamp(),
@@ -129,7 +129,7 @@ function StudentContext({ children }: { children: React.ReactNode }) {
       (async () => {
         await room.removeAllListeners().disconnect(true);
         (unsub as Unsubscribe)?.();
-        clearInterval(hearbeat as NodeJS.Timeout);
+        clearInterval(heartbeat as NodeJS.Timeout);
         cameraStream?.getTracks().forEach((track) => track.stop());
         screenStream?.getTracks().forEach((track) => track.stop());
         window.removeEventListener("offline", disconnectListener);
