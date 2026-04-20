@@ -24,8 +24,9 @@ export default async function AdminPage() {
         createdAt: (data.createdAt as Timestamp).toDate().toString(),
         startDate: (data.startDate as Timestamp).toDate().toString(),
         endDate: (data.endDate as Timestamp).toDate().toString(),
-        joinDeadline: data.joinDeadline? (data.joinDeadline as Timestamp).toDate().toString(): null,
-
+        joinDeadline: data.joinDeadline
+          ? (data.joinDeadline as Timestamp).toDate().toString()
+          : "",
       };
     })
     .sort(
