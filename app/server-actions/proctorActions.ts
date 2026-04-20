@@ -3,7 +3,7 @@
 import { db, realtimeDb } from "@/app/firebase-admin";
 import { serverActionWrapperRESPONSE } from "@/lib/server/serverActionWrapper";
 import getUser from "@/lib/server/getUser";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue,Timestamp } from "firebase-admin/firestore";
 
 // ─── Block / Unblock a student ───────────────────────────────────────────────
 
@@ -86,6 +86,50 @@ async function sendPrivateMessageInternal(
     recipientUid,
   });
 }
+// ─── Set join deadline for a competition ─────────────────────────────────────
+
+async function setJoinDeadlineInternal(
+  competitionId: string,
+  deadlineISO: string,
+) {
+  const user = await getUser();
+  if (user?.role !== "admin") throw new Error("Not authorized");
+
+  const deadline = Timestamp.fromDate(new Date(deadlineISO));
+
+  await db
+    .collection("competitions")
+    .doc(competitionId)
+    .update({ joinDeadline: deadline });
+}
+
+// ─── Grant one-time re-entry to a locked-out student ─────────────────────────
+
+async function grantReEntryInternal(
+  competitionId: string,
+  studentUid: string,
+) {
+  const user = await getUser();
+  if (user?.role !== "admin") throw new Error("Not authorized");
+
+  const registrationSnap = await db
+    .collection("registrations")
+    .where("uid", "==", studentUid)
+    .where("competitionId", "==", competitionId)
+    .where("expired", "==", false)
+    .limit(1)
+    .get();
+
+  if (registrationSnap.empty) throw new Error("Registration not found");
+
+  await registrationSnap.docs[0].ref.update({ reEntryGranted: true, lockedOut: false });
+
+  // Remove from blockedStudents so useIsBlocked clears and join button re-enables
+  await db
+    .collection("blockedStudents")
+    .doc(`${competitionId}_${studentUid}`)
+    .delete();
+}
 
 export const blockStudent = serverActionWrapperRESPONSE(
   blockStudentInternal,
@@ -109,4 +153,15 @@ export const sendPrivateMessage = serverActionWrapperRESPONSE(
   sendPrivateMessageInternal,
   undefined,
   "Failed to send private message",
+);
+export const setJoinDeadline = serverActionWrapperRESPONSE(
+  setJoinDeadlineInternal,
+  undefined,
+  "Failed to set join deadline",
+);
+
+export const grantReEntry = serverActionWrapperRESPONSE(
+  grantReEntryInternal,
+  undefined,
+  "Failed to grant re-entry",
 );

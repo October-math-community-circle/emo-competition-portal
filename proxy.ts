@@ -37,3 +37,4 @@ async function getUser(req: NextRequest) {
     return null;
   }
 }
+

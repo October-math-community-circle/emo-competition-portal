@@ -96,7 +96,7 @@ export function JoinButton({
     } catch (err: unknown) {
       console.log({ handleJoinError: err });
       resetTracks();
-      setError("An unexpected error occurred");
+      setError((prev) => prev || (err instanceof Error ? err.message : "An unexpected error occurred"));
     } finally {
       setLoading(false);
     }
