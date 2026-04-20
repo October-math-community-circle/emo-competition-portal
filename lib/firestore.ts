@@ -7,7 +7,8 @@ import {
   QuerySnapshot,
   DocumentData,
 } from "firebase/firestore";
-import { db } from "./firebase";
+//devmode import { db } from "./firebase";
+import { db } from "@/app/firebase";
 import { Incident } from "@october-math-community-circle/shared-utitilies";
 
 // Log an incident to the room's subcollection

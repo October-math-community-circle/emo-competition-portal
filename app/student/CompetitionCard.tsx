@@ -5,6 +5,8 @@ import { Competition } from "@october-math-community-circle/shared-utitilies/com
 import { Countdown } from "./Countdown";
 import { JoinButton } from "./JoinButton";
 import { Calendar, MapPin, Users, Clock } from "lucide-react";
+import { useIsBlocked } from "@/app/hooks/useIsBlocked";
+import { useUser } from "@/app/hooks/useUser";
 
 interface CompetitionCardProps {
   competition: Competition;
@@ -25,7 +27,7 @@ export function CompetitionCard({
   const durationHours = Math.round(durationMs / (1000 * 60 * 60));
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString(undefined, {
+    return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -33,6 +35,10 @@ export function CompetitionCard({
       minute: "2-digit",
     });
   };
+  const user = useUser();
+  const liveIsBlocked = useIsBlocked(competition.id!, user?.uid);
+  const blocked = user ? liveIsBlocked : isBlocked;
+        
 
   return (
     <Card className="overflow-hidden border-border/50 bg-linear-to-b from-card to-background/50 transition-all hover:border-primary/20 hover:shadow-lg">
@@ -111,7 +117,7 @@ export function CompetitionCard({
           competitionId={competition.id!}
           isJoined={isJoined}
           status={competition.status}
-          isBlocked={isBlocked}
+          isBlocked={blocked}
         />
       </CardContent>
     </Card>
