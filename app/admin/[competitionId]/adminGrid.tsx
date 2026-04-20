@@ -274,7 +274,7 @@ export default function AdminGrid({
             </button>
             <button
               onClick={() => setShowDeadlineModal(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold transition-colors invisible"
             >
               <Clock className="w-4 h-4" />
               Set Join Deadline
