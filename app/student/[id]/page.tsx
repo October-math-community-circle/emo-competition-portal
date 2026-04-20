@@ -23,9 +23,15 @@ async function page({ params }: { params: Promise<{ id: string }> }) {
   if (!session.exists()) return redirect("/");
   if ((session.toJSON() as session)?.status === "offline")
     return redirect("/student");
-  const problemSheetDownloadURL = await getDownloadURL(
-    storage.file(competition.problemSheetRef),
-  );
+  let problemSheetDownloadURL = "";
+  try {
+    problemSheetDownloadURL = await getDownloadURL(
+      storage.file(competition.problemSheetRef),
+    );
+  } catch {
+    problemSheetDownloadURL = "https://www.w3.org/WAI/WCAG21/Techniques/pdf/pdf-sample.pdf";
+  }
+
   const submissions: string[] = (
     await db.collection("submissions").where("uid", "==", user.uid).get()
   ).docs.map((submissionDoc) => {

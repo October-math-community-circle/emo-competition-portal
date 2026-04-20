@@ -19,7 +19,7 @@ export function serverActionWrapperRESPONSE<
       return {
         data: blankData,
         success: false,
-        error: errorMsg || (err instanceof Error ? err.message : String(err)),
+        error: (err instanceof Error ? err.message : String(err)) || errorMsg,
       };
     }
   };

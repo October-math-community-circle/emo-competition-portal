@@ -38,6 +38,7 @@ import { useRouter } from "next/navigation";
 import { useStreams } from "../useStreams";
 import MessagesPanel from "./MessagesPanel";
 import { useIsBlocked } from "@/app/hooks/useIsBlocked";
+import { recordDeliberateExit } from "@/app/server-actions/recordDeliberateExit";
 
 interface ClientPageProps {
   pdfUrl: string;
@@ -110,6 +111,25 @@ export default function ClientPage({
   };
 
   const [isCompetitionEnded, setIsCompetitionEnded] = useState(false);
+  const [blockCountdown, setBlockCountdown] = useState(5);
+
+  useEffect(() => {
+    if (!isBlocked) {
+      setBlockCountdown(5);
+      return;
+    }
+    const interval = setInterval(() => {
+      setBlockCountdown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isBlocked]);
+  useEffect(() => {
+      if (!isBlocked) return;
+      const timer = setTimeout(() => {
+        handleExitExam(true);
+      }, 5000);
+      return () => clearTimeout(timer);
+  }, [isBlocked]);
 
   useEffect(() => {
     if (!user) return;
@@ -121,6 +141,7 @@ export default function ClientPage({
         );
       },
     );
+
     const compUnSub = onSnapshot(
       doc(db, "competitions", competitionId),
       (snapshot) => {
@@ -143,18 +164,23 @@ export default function ClientPage({
   } = useStreams();
 
   // ── Manual Exit Handler ───────────────────────────────────────────────────
-  const handleExitExam = () => {
-    const confirmExit = window.confirm(
-      "Are you sure you want to exit the exam? You won't have another chance to enter the exam.",
-    );
-    if (confirmExit) {
-      router.push("/student");
-      setCameraStream(null);
-      setScreenStream(null);
-      updateLivekitToken("");
-      updateCompetitionId("");
+  const handleExitExam = async (involuntary = false) => {
+    if (!involuntary) {
+      const confirmExit = window.confirm(
+        "Are you sure you want to exit the exam? You won't have another chance to enter the exam.",
+      );
+      if (!confirmExit) return;
     }
+    if (!involuntary) {
+      await recordDeliberateExit(competitionId);
+    }
+    router.push("/student");
+    setCameraStream(null);
+    setScreenStream(null);
+    updateLivekitToken("");
+    updateCompetitionId("");
   };
+
 
   return (
     <>
@@ -334,7 +360,7 @@ export default function ClientPage({
           <div className="p-5 border-t border-zinc-800">
             <Button
               type="button"
-              onClick={handleExitExam}
+              onClick={() => handleExitExam(false)}
               disabled={isBlocked}
               className="w-full bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 transition-colors"
             >
@@ -352,14 +378,15 @@ export default function ClientPage({
             <Ban className="w-16 h-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold mb-2">Exam Access Blocked</h2>
             <p className="text-zinc-300 leading-relaxed">
-              The proctor has temporarily blocked your access to this exam.
-              Please wait or contact the proctor for assistance.
+              The proctor has blocked your access to this exam.
+              You will be redirected in <span className="text-red-400 font-bold">{blockCountdown}s</span>.
             </p>
+
           </div>
           <div className="p-5 border-t border-zinc-800">
             <Button
               type="button"
-              onClick={handleExitExam}
+              onClick={() => handleExitExam(true)}
               className="w-full bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 border border-red-500/20 transition-colors"
             >
               <LogOut className="w-4 h-4 mr-2" />

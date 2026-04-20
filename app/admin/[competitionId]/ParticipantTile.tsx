@@ -2,7 +2,7 @@
 
 import { TrackReference, VideoTrack } from "@livekit/components-react";
 import { Participant, Track } from "livekit-client";
-import { Camera, Monitor, VideoOff, Ban, MessageSquare } from "lucide-react";
+import { Camera, Monitor, VideoOff, Ban, MessageSquare , RotateCcw } from "lucide-react";
 
 export default function ParticipantTile({
   trackRefs,
@@ -10,12 +10,15 @@ export default function ParticipantTile({
   isBlocked,
   onBlock,
   onPrivateMessage,
+  onGrantReEntry,
 }: {
   trackRefs: TrackReference[];
   participant: Participant;
   isBlocked: boolean;
   onBlock: (participantIdentity: string) => void;
   onPrivateMessage: (participantIdentity: string, participantName: string) => void;
+  onGrantReEntry: (participantIdentity: string) => void;
+
 }) {
   const cameraRef = trackRefs.find((r) => r.source === Track.Source.Camera);
   const screenRef = trackRefs.find((r) => r.source === Track.Source.ScreenShare);
@@ -117,6 +120,14 @@ export default function ParticipantTile({
           <Ban className="w-3.5 h-3.5" />
           {isBlocked ? "Unblock" : "Block"}
         </button>
+        <button
+          onClick={() => onGrantReEntry(participant.identity)}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-amber-700 hover:bg-amber-600 text-white text-xs font-semibold transition-colors"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          Re-entry
+        </button>
+
       </div>
     </div>
   );
